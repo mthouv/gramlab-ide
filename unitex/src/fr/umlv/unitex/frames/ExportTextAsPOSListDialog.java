@@ -29,14 +29,20 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
+import java.util.Arrays;
 
 import javax.swing.JDialog;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 
 import fr.umlv.unitex.common.project.manager.GlobalProjectManager;
 import fr.umlv.unitex.config.Config;
 import fr.umlv.unitex.config.ConfigManager;
+import fr.umlv.unitex.expr.Kleene;
+import fr.umlv.unitex.graphrendering.GenericGraphBox;
+import fr.umlv.unitex.graphrendering.TfstGraphBox;
 import fr.umlv.unitex.io.Encoding;
 import fr.umlv.unitex.io.GraphIO;
 import fr.umlv.unitex.io.UnicodeIO;
@@ -94,7 +100,14 @@ public class ExportTextAsPOSListDialog extends JDialog {
 		this.filter = f;
 		this.delafStyle = delafStyle1;
 	}
+	
+	
+	
+	
+	
+	
 
+	
 	public void launch() {
 		canceled = false;
 		progress.setMinimum(0);
@@ -117,6 +130,7 @@ public class ExportTextAsPOSListDialog extends JDialog {
 				final File sentenceTok = new File(sntDir, "foo.tok");
 				final TfstTableModel model = new TfstTableModel(filter,
 						delafStyle);
+				final ArrayList<Integer> errorList = new ArrayList<>();
 				try {
 					final OutputStreamWriter writer = encoding
 							.getOutputStreamWriter(output);
@@ -130,7 +144,23 @@ public class ExportTextAsPOSListDialog extends JDialog {
 						final String text = readSentenceText(sentenceText);
 						TokensInfo.loadTokensInfo(sentenceTok, text);
 						final GraphIO g = GraphIO.loadGraph(tmpGrf, true, true);
+						if (g == null) {
+							errorList.add(i);
+							continue;
+						}
 						model.init(g.getBoxes());
+						
+						/*
+						if (i == 3652) {
+							
+							Kleene k = new Kleene(g);
+							System.out.println(k.kleeneAlgo());
+
+							break;
+						}
+						*/
+										
+						
 						if (model.getRowCount() == 0) {
 							/*
 							 * If the sentence automaton has been emptied, we
@@ -140,12 +170,12 @@ public class ExportTextAsPOSListDialog extends JDialog {
 								final String s = TokensInfo.getTokenAsString(j);
 								UnicodeIO.writeString(writer, s);
 							}
-						} else
-							for (int j = 0; j < model.getRowCount(); j++) {
-								final TokenTags t = model.getTokenTags(j);
-								UnicodeIO.writeString(writer, t.toString()
-										+ " ");
-							}
+						} else {
+							Kleene k = new Kleene(g);
+							System.out.println(k.kleeneAlgo());
+							//UnicodeIO.writeString(writer, k.kleeneAlgo() + " ");*/
+						}
+							
 						/* And we add a sentence delimiter */
 						UnicodeIO.writeString(writer, "{S}\n");
 						final int z = i;
@@ -189,6 +219,17 @@ public class ExportTextAsPOSListDialog extends JDialog {
 					} catch (final InvocationTargetException e) {
 						e.printStackTrace();
 					}
+				}
+				
+				if (!errorList.isEmpty()) {
+					StringBuilder sb = new StringBuilder("The following sentence(s) couldn't "
+							+ "be exported: \n");
+					for(int j = 0; j < errorList.size(); j++) {
+						sb.append("Sentence #").append(errorList.get(j)).append("\n");
+					}
+					JOptionPane.showMessageDialog(null,
+							sb.toString(), "Warning",
+							JOptionPane.WARNING_MESSAGE);
 				}
 			}
 		}).start();
